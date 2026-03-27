@@ -1109,13 +1109,15 @@ export default function App() {
           <img 
             src={`${BASE_URL}images/acc-01.jpg`} 
             alt="사망사고 사례" 
-            /* 수정한 부분: max 제한을 없애고 w-full로 가득 채움 */
-            className="w-full h-full object-cover" 
+            /* 1. 클래스에서 복잡한 대괄호 설정을 지우고 기본값만 둡니다 */
+            className="w-full h-full object-contain"
+            /* 2. style 속성을 통해 직접 1.2배(20% 확대)를 적용합니다 */
+            style={{ transform: 'scale(1.2)', transition: 'transform 0.3s' }}
             referrerPolicy="no-referrer"
           />
         </div>
       </div>
-    </WebSlide>
+    </WebSlide>,
 
     <WebSlide>
       <div className="h-full flex flex-col">
