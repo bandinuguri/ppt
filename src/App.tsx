@@ -1105,16 +1105,17 @@ export default function App() {
           label="12. Case Study" 
           title="'25년 주요 사고 사례 : 사망사고" 
         />
-        <div className="flex-1 mt-8 rounded-[2.5rem] overflow-hidden shadow-2xl border border-neutral-200 bg-neutral-900 flex items-center justify-center">
+<div className="flex-1 mt-8 rounded-[2.5rem] overflow-hidden shadow-2xl border border-neutral-200 bg-neutral-900 flex items-center justify-center">
           <img 
             src={`${BASE_URL}images/acc-01.jpg`} 
             alt="사망사고 사례" 
-            className="max-w-full max-h-full object-contain"
+            /* 수정한 부분: max 제한을 없애고 w-full로 가득 채움 */
+            className="w-full h-full object-cover" 
             referrerPolicy="no-referrer"
           />
         </div>
       </div>
-    </WebSlide>,
+    </WebSlide>
 
     <WebSlide>
       <div className="h-full flex flex-col">
