@@ -1112,7 +1112,7 @@ export default function App() {
             /* 1. 클래스에서 복잡한 대괄호 설정을 지우고 기본값만 둡니다 */
             className="w-full h-full object-contain"
             /* 2. style 속성을 통해 직접 1.2배(20% 확대)를 적용합니다 */
-            style={{ transform: 'scale(1.2)', transition: 'transform 0.3s' }}
+            style={{ transform: 'scale(1.1)', transition: 'transform 0.3s' }}
             referrerPolicy="no-referrer"
           />
         </div>
