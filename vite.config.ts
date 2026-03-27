@@ -6,11 +6,10 @@ import {defineConfig, loadEnv} from 'vite';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    // GitHub Pages 배포를 위한 경로 설정 (저장소 이름이 ppt이므로 /ppt/로 설정)
-    base: '/ppt/', 
+    base: '/',
     plugins: [react(), tailwindcss()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || 'AIzaSyAheq5tRFMXmHqjKqtagGQ3UxxcoT5pztI'),
     },
     resolve: {
       alias: {
@@ -19,12 +18,8 @@ export default defineConfig(({mode}) => {
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
+      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
     },
-    // 빌드 결과물이 저장될 폴더 (기본값은 dist입니다)
-    build: {
-      outDir: 'dist',
-    }
   };
 });

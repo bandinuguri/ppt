@@ -8,6 +8,52 @@
 }
 
 @media print {
-  .web-slide { display: block !important; page-break-after: always; }
-  .no-print { display: none !important; }
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+  
+  /* 네비게이션 숨기기 */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* 프린트용 컨테이너 */
+  .slide-container {
+    display: block !important;
+  }
+  
+  /* 각 슬라이드 - 세로로 2개씩 배치 */
+  .web-slide {
+    display: block !important;
+    width: 100% !important;
+    height: 50vh !important;
+    page-break-inside: avoid !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    border: 1px solid #e5e7eb !important;
+  }
+  
+  /* 2개마다 페이지 나누기 */
+  .web-slide:nth-child(2n) {
+    page-break-after: always !important;
+  }
+  
+  /* 애니메이션 비활성화 */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }

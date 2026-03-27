@@ -57,10 +57,13 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import NewsHeadlines from './components/NewsHeadlines';
 import AccidentGallery from './components/AccidentGallery';
+import { generatePrintWindow, downloadStandaloneHTML } from './utils/exportUtils';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+const BASE_URL = import.meta.env.BASE_URL;
 
 // --- Data ---
 const occurrenceData = [
@@ -69,7 +72,7 @@ const occurrenceData = [
   { year: '2022', accidents: 22, converted: 0.375, flights: 586666 },
   { year: '2023', accidents: 29, converted: 0.455, flights: 637362 },
   { year: '2024', accidents: 36, converted: 0.403, flights: 893300 },
-  { year: "'25*", accidents: 21, converted: 0.230, flights: 912744 },
+  { year: "2025", accidents: 21, converted: 0.230, flights: 912744 },
 ];
 
 const typeData = [
@@ -98,37 +101,56 @@ const majorCases2025 = [
 
 // --- Components ---
 
-const PenaltyTable = ({ data }: { data: any[] }) => (
-  <div className="w-full bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-neutral-100 h-full flex flex-col">
-    <table className="w-full flex-1 border-collapse table-fixed">
-      <thead>
-        <tr className="bg-neutral-900 text-white text-base uppercase tracking-wider">
-          <th className="py-6 px-4 text-center border-r border-white/10 w-[8%]">구분</th>
-          <th className="py-6 px-8 text-left border-r border-white/10 w-[52%]">위반사항</th>
-          <th className="py-6 px-2 text-center border-r border-white/10 w-[13.3%]">1차</th>
-          <th className="py-6 px-2 text-center border-r border-white/10 w-[13.3%]">2차</th>
-          <th className="py-6 px-2 text-center w-[13.3%]">3차</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((row, i) => (
-          <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-            <td className="py-1 px-4 font-mono text-sm text-neutral-400 border-r border-neutral-100 text-center align-middle">{row.id}</td>
-            <td className="py-1 px-10 font-bold border-r border-neutral-100 leading-[1.1] text-[28px] align-middle text-neutral-900">
-              <div className="line-clamp-2 break-keep">{row.title}</div>
-            </td>
-            <td className="py-1 px-2 text-center border-r border-neutral-100 text-neutral-600 text-xs align-middle font-bold whitespace-pre-line">{row.c1 || row.first}</td>
-            <td className="py-1 px-2 text-center border-r border-neutral-100 text-neutral-600 text-xs align-middle font-bold whitespace-pre-line">{row.c2 || row.second}</td>
-            <td className="py-1 px-2 text-center text-neutral-600 text-xs align-middle font-bold whitespace-pre-line">{row.c3 || row.third}</td>
+const PenaltyTable = ({ data }: { data: any[] }) => {
+  const formatText = (text: string) => {
+    if (!text || text === '-') return text;
+    // "0일" 패턴 찾기 (10일, 20일, 40일 등)
+    const match = text.match(/(\d+일)/g);
+    if (match) {
+      let result = text;
+      match.forEach(dayText => {
+        result = result.replace(
+          dayText,
+          `<span class="text-[14px] text-blue-600 font-bold">${dayText}</span>`
+        );
+      });
+      return <span dangerouslySetInnerHTML={{ __html: result }} />;
+    }
+    return text;
+  };
+
+  return (
+    <div className="w-full bg-white rounded-[2.5rem] shadow-2xl border border-neutral-100 h-full flex flex-col">
+      <table className="w-full border-collapse table-fixed">
+        <thead>
+          <tr className="bg-neutral-900 text-white text-base uppercase tracking-wider">
+            <th className="py-5 px-4 text-center border-r border-white/10 w-[8%]">구분</th>
+            <th className="py-5 px-8 text-center border-r border-white/10 w-[52%]">위반사항</th>
+            <th className="py-5 px-2 text-center border-r border-white/10 w-[13.3%]">1차</th>
+            <th className="py-5 px-2 text-center border-r border-white/10 w-[13.3%]">2차</th>
+            <th className="py-5 px-2 text-center w-[13.3%]">3차</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+        </thead>
+        <tbody>
+          {data.map((row, i) => (
+            <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
+              <td className="py-3 px-4 font-mono text-sm text-neutral-400 border-r border-neutral-100 text-center align-middle">{row.id}</td>
+              <td className="py-3 px-10 font-bold border-r border-neutral-100 leading-[1.1] text-[28px] align-middle text-neutral-900">
+                <div className="line-clamp-2 break-keep">{row.title}</div>
+              </td>
+              <td className="py-3 px-2 text-center border-r border-neutral-100 text-neutral-600 text-xs align-middle font-bold whitespace-pre-line">{formatText(row.c1 || row.first)}</td>
+              <td className="py-3 px-2 text-center border-r border-neutral-100 text-neutral-600 text-xs align-middle font-bold whitespace-pre-line">{formatText(row.c2 || row.second)}</td>
+              <td className="py-3 px-2 text-center text-neutral-600 text-xs align-middle font-bold whitespace-pre-line">{formatText(row.c3 || row.third)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 const SectionHeader = ({ label, title, description }: { label: string, title: string, description?: string }) => (
-  <div className="mb-4">
+  <div className="absolute top-12 left-12 right-12 z-10">
     <motion.span 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -158,8 +180,8 @@ const SectionHeader = ({ label, title, description }: { label: string, title: st
 );
 
 const WebSlide = ({ children, className, overflowHidden = true }: { children: React.ReactNode, className?: string, overflowHidden?: boolean }) => (
-  <div className={cn("web-slide h-full w-full flex flex-col p-8 md:p-12 bg-white text-black font-sans selection:bg-black selection:text-white", className)}>
-    <div className={cn("flex-1 flex flex-col", overflowHidden && "overflow-hidden")}>
+  <div className={cn("web-slide h-full w-full flex flex-col p-8 md:p-12 bg-white text-black font-sans selection:bg-black selection:text-white relative", className)}>
+    <div className={cn("flex-1 flex flex-col pt-32", overflowHidden && "overflow-hidden")}>
       {children}
     </div>
     <div className="mt-6 flex justify-between items-center text-[10px] font-mono uppercase tracking-widest border-t border-black/10 pt-4">
@@ -248,31 +270,31 @@ const GoalTable = ({ title, flights, data, total, isSmall = false }: { title: st
       </h3>
       <span className={cn("font-mono text-neutral-400 font-bold", isSmall ? "text-xs" : "text-lg")}>운항횟수: {flights}</span>
     </div>
-    <table className={cn("w-full border-collapse", isSmall ? "text-sm" : "text-xl")}>
+    <table className={cn("w-full border-collapse", isSmall ? "text-lg" : "text-xl")}>
       <thead>
         <tr className="bg-neutral-50 text-neutral-500 font-bold border-b border-neutral-100">
-          <th className={cn("text-left", isSmall ? "py-3 px-3" : "py-5 px-5")}>세부지표</th>
-          <th className={cn("text-center text-orange-600", isSmall ? "py-3 px-3" : "py-5 px-5")}>안전목표</th>
-          <th className={cn("text-center text-orange-600", isSmall ? "py-3 px-3" : "py-5 px-5")}>실적</th>
-          <th className={cn("text-center text-orange-600", isSmall ? "py-3 px-3" : "py-5 px-5")}>사고건수</th>
+          <th className={cn("text-left", isSmall ? "py-6 px-3" : "py-8 px-5")}>세부지표</th>
+          <th className={cn("text-center text-orange-600", isSmall ? "py-6 px-3" : "py-8 px-5")}>안전목표</th>
+          <th className={cn("text-center text-orange-600", isSmall ? "py-6 px-3" : "py-8 px-5")}>실적</th>
+          <th className={cn("text-center text-orange-600", isSmall ? "py-6 px-3" : "py-8 px-5")}>사고건수</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-neutral-50">
         {data.map((row, i) => (
           <tr key={i} className="hover:bg-neutral-50/50 transition-colors">
-            <td className={cn("font-bold text-neutral-800", isSmall ? "py-3 px-3" : "py-5 px-5")}>{row.category}</td>
-            <td className={cn("text-center text-neutral-400 font-mono", isSmall ? "py-3 px-3" : "py-5 px-5")}>{row.goal}</td>
-            <td className={cn("text-center font-black", isSmall ? "py-3 px-3" : "py-5 px-5", row.warning ? "bg-red-50 text-red-600" : "text-neutral-700")}>
-              {row.performance} {row.percent && <span className="text-[0.7em] font-normal opacity-60 ml-1">({row.percent})</span>}
+            <td className={cn("font-bold text-neutral-800", isSmall ? "py-6 px-3" : "py-8 px-5")}>{row.category}</td>
+            <td className={cn("text-center text-neutral-400 font-mono", isSmall ? "py-6 px-3" : "py-8 px-5")}>{row.goal}</td>
+            <td className={cn("text-center font-black", isSmall ? "py-6 px-3" : "py-8 px-5", row.warning ? "bg-red-50 text-red-600" : "text-neutral-700")}>
+              {row.performance} {row.percent && <span className="text-[0.8em] font-normal opacity-60 ml-1">({row.percent})</span>}
             </td>
-            <td className={cn("text-center font-black text-neutral-900", isSmall ? "py-3 px-3" : "py-5 px-5")}>{row.count}</td>
+            <td className={cn("text-center font-black text-neutral-900", isSmall ? "py-6 px-3" : "py-8 px-5")}>{row.count}</td>
           </tr>
         ))}
         <tr className="bg-neutral-900 text-white font-bold">
-          <td className={cn(isSmall ? "py-4 px-3" : "py-6 px-5")}>{total.label}</td>
-          <td className={cn("text-center opacity-30", isSmall ? "py-4 px-3" : "py-6 px-5")}>-</td>
-          <td className={cn("text-center text-blue-400 font-black", isSmall ? "py-4 px-3 text-xl" : "py-6 px-5 text-3xl")}>{total.performance}</td>
-          <td className={cn("text-center font-black", isSmall ? "py-4 px-3 text-xl" : "py-6 px-5 text-3xl")}>{total.count}</td>
+          <td className={cn(isSmall ? "py-7 px-3" : "py-9 px-5")}>{total.label}</td>
+          <td className={cn("text-center opacity-30", isSmall ? "py-7 px-3" : "py-9 px-5")}>-</td>
+          <td className={cn("text-center text-blue-400 font-black", isSmall ? "py-7 px-3 text-2xl" : "py-9 px-5 text-3xl")}>{total.performance}</td>
+          <td className={cn("text-center font-black", isSmall ? "py-7 px-3 text-2xl" : "py-9 px-5 text-3xl")}>{total.count}</td>
         </tr>
       </tbody>
     </table>
@@ -328,58 +350,33 @@ export default function App() {
   const [selectedWord, setSelectedWord] = useState<{ text: string, content: string, airport?: string, date?: string, cause?: string } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const totalSlides = 15;
-
-  const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev + 1) % totalSlides);
-  }, []);
-
-  const prevSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
-  }, []);
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
-      if (e.key === 'ArrowLeft') prevSlide();
-      if (e.key === 'f') toggleFullscreen();
-    };
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      prevSlide();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('contextmenu', handleContextMenu);
-    
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, [nextSlide, prevSlide]);
-
   const slides = [
     // Slide 1: Hero / Title
     <WebSlide>
-      <div className="h-full flex flex-col justify-center">
+      <div className="h-full flex flex-col justify-center relative">
+        {/* QR Code at top right */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="absolute top-12 right-12 w-48 h-48 group"
+        >
+          <img 
+            src={`${BASE_URL}images/qr-code.jpg`} 
+            alt="QR Code" 
+            className="w-full h-full object-contain rounded-2xl shadow-2xl border-4 border-white bg-white p-2 transition-transform group-hover:scale-110"
+            referrerPolicy="no-referrer"
+          />
+          <div className="mt-2 text-center">
+            <span className="text-[10px] font-mono uppercase tracking-widest opacity-40">Scan for Info</span>
+          </div>
+        </motion.div>
+
         <div className="mb-4">
           <span className="text-sm font-mono uppercase tracking-widest opacity-40">Introduction</span>
         </div>
         <h1 className="text-8xl font-black tracking-tighter leading-none mb-12">
-          지상조업 <br />
-          <span className="text-blue-600">안전사고예방</span> <br />
-          간담회
+          지상조업 <span className="text-blue-600">안전사고예방</span> 간담회
         </h1>
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -397,9 +394,50 @@ export default function App() {
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] font-mono uppercase opacity-40 mb-2">PLACE</span>
-            <span className="text-xl font-medium">한국공항공사 6층 컨퍼런스룸</span>
+            <span className="text-xl font-medium">한국공항공사 2층 컨퍼런스룸</span>
           </div>
         </motion.div>
+      </div>
+    </WebSlide>,
+
+    // Slide 2: 목차
+    <WebSlide>
+      <div className="h-full flex flex-col justify-center">
+        <SectionHeader 
+          label="Contents" 
+          title="목차" 
+        />
+        <div className="mt-12 grid grid-cols-2 gap-x-20 gap-y-6 max-w-7xl mx-auto">
+          {[
+            { num: "01", title: "간담회 개요" },
+            { num: "02", title: "추진체계" },
+            { num: "03", title: "지상안전사고란?" },
+            { num: "04", title: "지상안전사고 유형" },
+            { num: "05", title: "지상안전 사고 신고" },
+            { num: "06", title: "지상안전 사고 행정처분 기준" },
+            { num: "07", title: "지상안전 사고 발생 현황" },
+            { num: "08", title: "공항별 사고 발생 현황" },
+            { num: "09", title: "'25년 지상안전사고 예방 목표 달성 현황" },
+            { num: "10", title: "지상안전 사고 원인" },
+            { num: "11", title: "25년 주요 사고 사례 및 갤러리" },
+            { num: "12", title: "'공항 지상안전사고 예방' 웹사이트 소개" }
+          ].map((item, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className="flex items-center gap-6 p-6 bg-white rounded-2xl border border-neutral-100 hover:border-blue-600 hover:shadow-lg transition-all group min-w-0"
+            >
+              <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-2xl group-hover:scale-110 transition-transform shrink-0">
+                {item.num}
+              </div>
+              <h3 className="text-2xl font-bold text-neutral-900 group-hover:text-blue-600 transition-colors whitespace-nowrap">
+                {item.title}
+              </h3>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </WebSlide>,
 
@@ -432,7 +470,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-12">
             <h3 className="text-3xl font-bold mb-4 flex items-center gap-4">
               <Clock className="text-blue-600" size={32} />
               세부일정
@@ -448,12 +486,12 @@ export default function App() {
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {[
-                    { time: "14:00 ~ 14:05 (5')", content: "인사 말씀", note: "공항정책관" },
-                    { time: "14:05 ~ 14:15 (10')", content: "'25년 지상조업 사고현황 및 사례 교육", note: "" },
-                    { time: "14:15 ~ 14:35 (20')", content: "양 공항공사 사고현황 및 사고예방 계획", note: "" },
-                    { time: "14:35 ~ 14:55 (20')", content: "지상조업 사고 예방 제안사항 검토", note: "" },
-                    { time: "14:55 ~ 15:15 (20')", content: "종사자 근로환경 개선 제안사항 검토", note: "" },
-                    { time: "15:15 ~ 15:30 (15')", content: "마무리 말씀", note: "공항운영과장" },
+                    { time: "15:00 ~ 15:05 (5')", content: "인사 말씀", note: "공항운영과" },
+                    { time: "15:05 ~ 15:15 (10')", content: "'25년 지상조업 사고현황 및 사례 교육", note: "" },
+                    { time: "15:15 ~ 15:35 (20')", content: "양 공항공사 사고현황 및 사고예방 계획", note: "" },
+                    { time: "15:35 ~ 15:55 (20')", content: "지상조업 사고 예방 제안사항 검토", note: "" },
+                    { time: "15:55 ~ 16:15 (20')", content: "종사자 근로환경 개선 제안사항 검토", note: "" },
+                    { time: "16:15 ~ 16:30 (15')", content: "마무리 말씀", note: "공항정책관" },
                   ].map((row, i) => (
                     <tr key={i} className="hover:bg-blue-50/30 transition-colors">
                       <td className="p-3 px-6 font-mono text-[16px] text-neutral-500">{row.time}</td>
@@ -474,16 +512,16 @@ export default function App() {
       <div className="h-full flex flex-col justify-center">
         <SectionHeader 
           label="Attachment 2" 
-          title="추진체계" 
+          title="지상안전사고 예방 추진체계" 
         />
-        <div className="mt-6 flex flex-col gap-4">
+        <div className="mt-6 flex flex-col gap-12">
         <div className="flex gap-6 p-6 bg-white border border-neutral-200 rounded-[2.5rem] shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
           <div className="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-100">
             <Building2 size={48} />
           </div>
           <div className="flex flex-col justify-center space-y-2">
             <h3 className="text-3xl font-black text-blue-600">국토교통부</h3>
-            <ul className="space-y-1 text-2xl text-neutral-700 font-medium leading-tight">
+            <ul className="space-y-2 text-[26px] text-neutral-700 font-medium leading-relaxed">
               <li className="flex items-start gap-4">
                 <ChevronRight className="mt-1.5 shrink-0 text-blue-500" size={24} />
                 간담회 개최, 지상조업사고 통계·교육자료 작성
@@ -505,7 +543,7 @@ export default function App() {
           </div>
           <div className="flex flex-col justify-center space-y-2">
             <h3 className="text-3xl font-black text-neutral-800">공항 공사</h3>
-            <ul className="space-y-1 text-2xl text-neutral-700 font-medium leading-tight">
+            <ul className="space-y-2 text-[26px] text-neutral-700 font-medium leading-relaxed">
               <li className="flex items-start gap-4">
                 <ChevronRight className="mt-1.5 shrink-0 text-neutral-500" size={24} />
                 항공사, 지상조업사 간담회 참석 및 개선 아이디어 제출 협조 요청
@@ -528,7 +566,7 @@ export default function App() {
           </div>
           <div className="flex flex-col justify-center space-y-2">
             <h3 className="text-3xl font-black text-emerald-600">지상조업사</h3>
-            <ul className="space-y-1 text-2xl text-neutral-700 font-medium leading-tight">
+            <ul className="space-y-2 text-[26px] text-neutral-700 font-medium leading-relaxed">
               <li className="flex items-start gap-4">
                 <ChevronRight className="mt-1.5 shrink-0 text-emerald-500" size={24} />
                 지상조업 근로자 교육, 안전 장비 확충, 근로환경 및 처우 개선 등
@@ -541,37 +579,43 @@ export default function App() {
   </WebSlide>,
 
     // Slide 2: 지상안전사고란?
-    <WebSlide overflowHidden={false}>
-      <SectionHeader 
-        label="01. Definition" 
-        title="지상안전사고란?" 
-      />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        <div className="space-y-8">
-          <div className="p-8 bg-blue-50 border-l-4 border-blue-600 rounded-r-2xl">
-            <h3 className="text-2xl font-bold mb-4">정의</h3>
-            <p className="text-2xl text-neutral-800 leading-relaxed">
-              "지상안전사고"란 공항 보호구역에서 사람, 시설, 차량 및 장비 등으로 인하여 <span className="font-bold text-black text-[1.1em]">인명피해가 발생하거나</span> <span className="font-bold text-black text-[1.1em]">항공기,</span> <span className="font-bold text-black text-[1.1em]">시설, 차량등에 물적피해가 발생한 것</span>을 말한다. 다만, 항공기 운항과 관련된 사고는 제외한다.
-            </p>
+    <WebSlide>
+      <div className="h-full flex flex-col justify-center">
+        <SectionHeader 
+          label="01. Definition" 
+          title="지상안전사고란?" 
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-8">
+          <div className="space-y-8">
+            <div className="p-8 bg-blue-50 border-l-4 border-blue-600 rounded-r-2xl">
+              <h3 className="text-2xl font-bold mb-4">정의</h3>
+              <p className="text-2xl text-neutral-800 leading-relaxed">
+                "지상안전사고"란 공항 보호구역에서 사람, 시설, 차량 및 장비 등으로 인하여 <span className="font-bold text-black text-[1.1em]">인명피해가 발생하거나</span> <span className="font-bold text-black text-[1.1em]">항공기,</span> <span className="font-bold text-black text-[1.1em]">시설, 차량등에 물적피해가 발생한 것</span>을 말한다. 다만, 항공기 사고, 준사고, 항공안전장애는 제외한다.
+              </p>
+            </div>
+            <div className="p-8 bg-neutral-50 border-l-4 border-neutral-400 rounded-r-2xl">
+              <h3 className="text-2xl font-bold mb-4">법적 근거</h3>
+              <ul className="space-y-2 text-lg text-neutral-600">
+                <li>• 공항시설법 제31조의2, 제31조의3</li>
+                <li>• 공항안전운영기준(국토교통부 고시)</li>
+              </ul>
+            </div>
           </div>
-          <div className="p-8 bg-neutral-50 border-l-4 border-neutral-400 rounded-r-2xl">
-            <h3 className="text-2xl font-bold mb-4">법적 근거</h3>
-            <ul className="space-y-2 text-lg text-neutral-600">
-              <li>• 공항시설법 제31조의2, 제31조의3</li>
-              <li>• 공항안전운영기준(국토교통부 고시)</li>
-            </ul>
+          <div className="flex items-center justify-center bg-neutral-900 rounded-3xl p-12 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 blur-[100px] rounded-full" />
+            <div className="text-center relative z-10">
+              <AlertTriangle size={100} className="mx-auto mb-8 text-amber-500 drop-shadow-[0_0_20px_rgba(245,158,11,0.5)]" />
+              <p className="text-5xl font-black mb-6 leading-tight tracking-tight">
+                하늘 위의 안전!<br />
+                <span className="text-amber-400">지상에서 시작</span>됩니다.
+              </p>
+              <div className="w-24 h-1 bg-amber-500 mx-auto mt-6" />
+            </div>
           </div>
         </div>
-        <div className="flex items-center justify-center bg-neutral-900 rounded-3xl p-12 text-white">
-          <div className="text-center">
-            <AlertTriangle size={80} className="mx-auto mb-6 text-amber-500" />
-            <p className="text-3xl font-bold mb-4">안전은 선택이 아닌 필수</p>
-            <p className="text-xl opacity-60">모든 사고는 예방 가능합니다.</p>
-          </div>
+        <div className="mt-8">
+          <img src={`${BASE_URL}images/con-05.jpg`} alt="Ground Safety Information Banner" className="w-full h-auto rounded-xl" referrerPolicy="no-referrer" />
         </div>
-      <div className="mt-8 relative -mx-8 md:-mx-12 w-[calc(100%+4rem)] md:w-[calc(100%+6rem)]">
-        <img src="/images/con-04.jpg" alt="Ground Safety Accident Definition" className="w-full h-auto shadow-lg" referrerPolicy="no-referrer" />
-      </div>
       </div>
     </WebSlide>,
 
@@ -581,8 +625,8 @@ export default function App() {
         label="02. Accident Types" 
         title="지상안전사고 유형" 
       />
-      <div className="mt-8 w-full">
-        <img src="/images/con-03.jpg" alt="Ground Safety Accident Types" className="w-full h-auto rounded-2xl shadow-lg" referrerPolicy="no-referrer" />
+      <div className="flex-1 flex items-center justify-center mt-4">
+        <img src={`${BASE_URL}images/con-03.jpg`} alt="Ground Safety Accident Types" className="max-w-full max-h-full object-contain rounded-2xl shadow-lg scale-110" referrerPolicy="no-referrer" />
       </div>
     </WebSlide>,
 
@@ -592,7 +636,7 @@ export default function App() {
         label="03. Reporting" 
         title="지상안전사고 신고" 
       />
-      <div className="mt-8">
+      <div className="flex-1 flex flex-col justify-center">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 items-center">
           {/* Step 1: 발생 */}
           <motion.div 
@@ -667,13 +711,13 @@ export default function App() {
             </p>
           </motion.div>
         </div>
-      </div>
 
-      <div className="mt-16 p-6 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4">
-        <Info className="text-red-600" />
-        <p className="text-lg font-medium text-red-900">
-          허위 보고 또는 보고 누락 시 관련 법령에 따라 엄중한 처벌을 받을 수 있습니다.
-        </p>
+        <div className="mt-8 p-6 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4">
+          <Info className="text-red-600" />
+          <p className="text-2xl font-medium text-red-900">
+            허위 보고 또는 보고 누락 시 관련 법령에 따라 엄중한 처벌을 받을 수 있습니다.
+          </p>
+        </div>
       </div>
     </WebSlide>,
 
@@ -714,7 +758,7 @@ export default function App() {
         </div>
 
         {/* Chart */}
-        <div className="h-[340px] w-full bg-white rounded-3xl p-4">
+        <div className="h-[340px] w-full bg-white rounded-3xl p-4 border-2 border-neutral-200">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={occurrenceData} margin={{ top: 40, right: 30, left: 20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -743,7 +787,7 @@ export default function App() {
                 {occurrenceData.map((entry, index) => (
                   <Cell 
                     key={`cell-${index}`} 
-                    fill={entry.year === "'25*" ? '#fee2e2' : '#f1f5f9'} 
+                    fill={entry.year === "2025" ? '#fee2e2' : '#f1f5f9'} 
                   />
                 ))}
                 <LabelList 
@@ -803,7 +847,7 @@ export default function App() {
             {[
               { year: '2023년', count: '29건', rate: '0.455', active: false },
               { year: '2024년', count: '36건', rate: '0.403', active: false },
-              { year: "'25*년", count: '21건', rate: '0.230', active: true },
+              { year: "2025년", count: '21건', rate: '0.230', active: true },
             ].map((item, i) => (
               <div 
                 key={i} 
@@ -885,7 +929,7 @@ export default function App() {
         label="07. Goals" 
         title="'25년 지상안전사고 예방 목표 달성 현황" 
       />
-      <div className="flex flex-col items-center justify-center h-[calc(100%-160px)]">
+      <div className="flex flex-col items-center justify-center h-[calc(100%-180px)] mt-28">
         <div className="w-full max-w-6xl">
           <GoalTable 
             title="전국 공항" 
@@ -903,8 +947,8 @@ export default function App() {
         label="08. Goals" 
         title="'25년 지상안전사고 예방 목표 달성 현황" 
       />
-      <div className="flex flex-col items-center justify-center h-[calc(100%-160px)]">
-        <div className="grid grid-cols-2 gap-8 w-full">
+      <div className="flex flex-col items-center justify-center h-[calc(100%-180px)] mt-28">
+        <div className="grid grid-cols-2 gap-8 w-full max-w-[110rem]">
           <GoalTable 
             title="한국공항공사" 
             flights="486,984" 
@@ -957,9 +1001,9 @@ export default function App() {
             </div>
 
             <div className="flex-1 flex flex-col justify-center">
-              <p className="text-[32px] leading-[3] text-neutral-200 font-medium mb-4 tracking-tight">
+              <p className="text-[34px] leading-[3] text-neutral-200 font-medium mb-4 tracking-tight">
                 지상안전사고의 대부분은 <span className="text-white font-bold border-b-4 border-blue-600 pb-1">인적 요인</span>에 의해 발생하며,<br />
-                특히 <span className="text-blue-400 font-bold">운전자 및 작업자의 부주의</span>가<br />
+                특히 <span className="text-blue-400 font-bold text-[44px]">운전자 및 작업자의 부주의</span>가<br />
                 사고의 결정적인 원인이 되고 있습니다.
               </p>
             </div>
@@ -972,7 +1016,7 @@ export default function App() {
                   </div>
                   <h4 className="font-bold text-2xl text-white">전방 주시 태만</h4>
                 </div>
-                <p className="text-lg text-neutral-400 leading-relaxed">이동 중 주변 상황 확인 소홀 및<br />스마트폰 사용 등 집중력 분산</p>
+                <p className="text-[20px] text-neutral-400 leading-relaxed">이동 중 주변 상황 확인 소홀 및<br />스마트폰 사용 등 집중력 분산</p>
               </div>
               <div className="bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 hover:bg-white/10 transition-all">
                 <div className="flex items-center gap-4 mb-3">
@@ -981,14 +1025,14 @@ export default function App() {
                   </div>
                   <h4 className="font-bold text-2xl text-white">운전 미숙</h4>
                 </div>
-                <p className="text-lg text-neutral-400 leading-relaxed">익숙한 작업 환경에서의 긴장감 완화 및<br />기본 조작 절차 누락</p>
+                <p className="text-[20px] text-neutral-400 leading-relaxed">익숙한 작업 환경에서의 긴장감 완화 및<br />기본 조작 절차 누락</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* 기타 요인들 (Right Section) */}
-        <div className="lg:col-span-5 flex flex-col gap-3">
+        <div className="lg:col-span-5 flex flex-col gap-6 justify-between">
           {[
             { title: "사주경계 미흡", desc: "출발 전 주변 확인 소홀, 교차로/유도로 진입 전 일단정지 규정 미준수", color: "bg-amber-500", icon: <Move className="text-amber-500" /> },
             { title: "안전 수칙 미준수", desc: "통과 높이 제한 무시, 안전거리 미확보, 유도자 없이 후진 접현 시도", color: "bg-red-500", icon: <ShieldCheck className="text-red-500" /> },
@@ -1004,7 +1048,7 @@ export default function App() {
                   <div className={cn("w-1.5 h-6 rounded-full", item.color)} />
                   {item.title}
                 </h4>
-                <p className="text-lg text-neutral-500 leading-snug font-medium">{item.desc}</p>
+                <p className="text-[22px] text-neutral-500 leading-snug font-medium">{item.desc}</p>
               </div>
             </div>
           ))}
@@ -1054,10 +1098,28 @@ export default function App() {
       </div>
     </WebSlide>,
 
+    // Slide 12-1: 25년 주요 사례 (사망사고)
     <WebSlide>
       <div className="h-full flex flex-col">
         <SectionHeader 
-          label="13. Case Study" 
+          label="12. Case Study" 
+          title="'25년 주요 사고 사례 : 사망사고" 
+        />
+        <div className="flex-1 mt-8 rounded-[2.5rem] overflow-hidden shadow-2xl border border-neutral-200 bg-neutral-900 flex items-center justify-center">
+          <img 
+            src={`${BASE_URL}images/acc-01.jpg`} 
+            alt="사망사고 사례" 
+            className="max-w-full max-h-full object-contain"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      </div>
+    </WebSlide>,
+
+    <WebSlide>
+      <div className="h-full flex flex-col">
+        <SectionHeader 
+          label="13. Gallery" 
           title="2025년 주요 지상안전사고 갤러리" 
         />
         <div className="flex-1 min-h-0">
@@ -1066,62 +1128,403 @@ export default function App() {
       </div>
     </WebSlide>,
 
-    // Slide 14: 웹사이트 소개
+    // Slide 14: 설문조사 개요
     <WebSlide>
       <SectionHeader 
-        label="14. Platform" 
-        title="'공항 지상안전사고 예방' 웹사이트" 
+        label="14. Survey" 
+        title="지상조업 사고예방 및 근무환경 개선 설문조사" 
       />
-      <div className="flex-1 min-h-0 mt-4 rounded-3xl overflow-hidden border border-neutral-200 shadow-2xl relative bg-neutral-50 flex items-center justify-center">
-        <img 
-          src="/images/batang.jpg" 
-          alt="Ground Safety Website" 
-          className="w-full h-full object-contain scale-90"
-          referrerPolicy="no-referrer"
-        />
-        <div className="absolute bottom-8 left-8 bg-white/90 backdrop-blur-md p-6 rounded-2xl border border-white shadow-xl">
-          <p className="text-2xl font-black text-neutral-900 mb-2">지금 바로 접속하세요</p>
-          <p className="text-lg font-bold text-blue-600">bandinuguri.github.io/safe/</p>
+      <div className="flex flex-col justify-center h-[calc(100%-180px)] px-24 mt-16">
+        <div className="space-y-12">
+          <div className="grid grid-cols-1 gap-8">
+            <div className="bg-red-50 p-8 rounded-3xl border-l-[16px] border-red-500 shadow-sm">
+              <h4 className="text-4xl font-black text-red-900 mb-4 flex items-center gap-4">
+                <span className="flex items-center justify-center w-14 h-14 bg-red-500 text-white rounded-full text-3xl">🎯</span>
+                조사 목적
+              </h4>
+              <p className="text-3xl text-neutral-800 leading-relaxed">
+                지상조업 현장 사고 예방 아이디어 발굴 및 근무환경 개선 방안 검토
+              </p>
+            </div>
+
+            <div className="bg-amber-50 p-8 rounded-3xl border-l-[16px] border-amber-500 shadow-sm">
+              <h4 className="text-4xl font-black text-amber-900 mb-4 flex items-center gap-4">
+                <span className="flex items-center justify-center w-14 h-14 bg-amber-500 text-white rounded-full text-3xl">📋</span>
+                조사내용
+              </h4>
+              <p className="text-3xl text-neutral-800 leading-relaxed">
+                근로자가 체감하는 지상조업 현장 위험도 및 사고 예방 아이디어, 작업환경 만족도 및 개선 아이디어 등
+              </p>
+            </div>
+
+            <div className="bg-emerald-50 p-8 rounded-3xl border-l-[16px] border-emerald-500 shadow-sm">
+              <h4 className="text-4xl font-black text-emerald-900 mb-4 flex items-center gap-4">
+                <span className="flex items-center justify-center w-14 h-14 bg-emerald-500 text-white rounded-full text-3xl">👥</span>
+                기간 및 대상
+              </h4>
+              <p className="text-3xl text-neutral-800 leading-relaxed mb-3">
+                <strong className="text-neutral-950">대상·기간:</strong> 공항공사·항공사·지상조업사 / '26.3.20~3.25 * 참여자 74명
+              </p>
+              <p className="text-3xl text-neutral-800 leading-relaxed">
+                <strong className="text-neutral-950">기타:</strong> 사고예방 아이디어, 근무환경 개선 방안 의견 제출자 각 10명에게 커피 쿠폰 제공
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </WebSlide>,
 
-    // Slide 15: Outro
+    // Slide 17: 설문조사 결과
     <WebSlide>
-      <div className="h-full flex flex-col justify-center items-start">
-        <motion.span 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-[10px] font-mono uppercase tracking-[0.5em] mb-4 text-blue-600 font-bold"
-        >
-          Conclusion
-        </motion.span>
-        <h2 className="text-[8vw] font-bold tracking-tighter leading-[0.8] mb-8">
-          SAFE GROUND<br />
-          <span className="text-blue-600">SAFE FLIGHT.</span>
-        </h2>
-        <p className="text-xl text-neutral-500 max-w-2xl leading-tight mb-8">
-          안전은 타협의 대상이 아닙니다. 우리의 철저한 준비가 모두의 안전을 보장합니다.
-        </p>
-        <button 
-          onClick={() => setCurrentSlide(0)}
-          className="group flex items-center gap-4 text-lg font-bold border-b-2 border-black pb-1 hover:gap-8 transition-all"
-        >
-          Restart Presentation <ArrowRight className="text-blue-600" />
-        </button>
+      <SectionHeader 
+        label="17. Survey Results" 
+        title="설문조사 결과" 
+      />
+      <div className="flex flex-col justify-center h-[calc(100%-120px)] px-16 mt-16">
+        <div className="grid grid-cols-2 gap-10">
+          {/* 위험도 인식 */}
+          <div className="bg-white p-10 rounded-[2rem] border border-neutral-200 shadow-xl">
+            <h3 className="text-4xl font-black text-neutral-900 mb-4 flex items-center gap-4">
+              <span className="text-red-600">⚠</span> 위험도 인식
+            </h3>
+            <p className="text-3xl text-neutral-800 mb-8">현장 근로자 <span className="font-bold text-red-600">47%</span>(35명)는 지상조업환경이 <span className="font-bold text-red-600">위험</span>하다고 생각하고 있으며, <span className="font-bold text-blue-600">27%</span>(20명)만 비교적 <span className="font-bold text-blue-600">안전</span>하다고 생각하고 있음</p>
+            <div className="bg-neutral-50 p-6 rounded-2xl mb-6">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-neutral-300">
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">매우 위험</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">위험</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">보통</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">조금 안전</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">안전</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">비고</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-neutral-200">
+                    <td className="py-4 px-1 text-center text-2xl font-black text-red-600">9<div className="text-sm text-neutral-500">(12%)</div></td>
+                    <td className="py-4 px-1 text-center text-2xl font-black text-red-500">26<div className="text-sm text-neutral-500">(36%)</div></td>
+                    <td className="py-4 px-1 text-center text-2xl font-black text-neutral-600">19<div className="text-sm text-neutral-500">(26%)</div></td>
+                    <td className="py-4 px-1 text-center text-2xl font-black text-blue-500">5<div className="text-sm text-neutral-500">(7%)</div></td>
+                    <td className="py-4 px-1 text-center text-2xl font-black text-blue-600">15<div className="text-sm text-neutral-500">(20%)</div></td>
+                    <td className="py-4 px-1 text-center text-xl font-bold text-neutral-700">74명</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[{name: '매우 위험', value: 9}, {name: '위험', value: 26}, {name: '보통', value: 19}, {name: '조금 안전', value: 5}, {name: '안전', value: 15}]}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value">
+                    {[9, 26, 19, 5, 15].map((val, index) => (
+                      <Cell key={index} fill={index < 2 ? '#dc2626' : index === 2 ? '#525252' : '#2563eb'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 근무환경 만족도 */}
+          <div className="bg-white p-10 rounded-[2rem] border border-neutral-200 shadow-xl">
+            <h3 className="text-4xl font-black text-neutral-900 mb-4 flex items-center gap-4">
+              <span className="text-amber-600">📋</span> 근무환경 만족도
+            </h3>
+            <p className="text-3xl text-neutral-800 mb-8"><span className="font-bold text-blue-600">77%</span>(57명)는 평균 이상의 <span className="font-bold text-blue-600">만족</span>을 표시하였으나, <span className="font-bold text-red-600">23%</span>(17명)는 휴게공간, 근무시간, 상벌제도 등 <span className="font-bold text-red-600">불만족</span> 반응</p>
+            <div className="bg-neutral-50 p-6 rounded-2xl mb-6">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-neutral-300">
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">매우 불만족</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">불만족</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">보통</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">조금 만족</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">만족</th>
+                    <th className="py-2 px-1 text-center text-lg font-bold text-neutral-700">비고</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-neutral-200">
+                    <td className="py-4 px-1 text-center text-2xl font-black text-red-600">5<div className="text-sm text-neutral-500">(7%)</div></td>
+                    <td className="py-4 px-1 text-center text-2xl font-black text-red-500">12<div className="text-sm text-neutral-500">(16%)</div></td>
+                    <td className="py-4 px-1 text-center text-2xl font-black text-neutral-600">29<div className="text-sm text-neutral-500">(39%)</div></td>
+                    <td className="py-4 px-1 text-center text-2xl font-black text-blue-500">14<div className="text-sm text-neutral-500">(19%)</div></td>
+                    <td className="py-4 px-1 text-center text-2xl font-black text-blue-600">14<div className="text-sm text-neutral-500">(19%)</div></td>
+                    <td className="py-4 px-1 text-center text-xl font-bold text-neutral-700">74명</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[{name: '매우 불만족', value: 5}, {name: '불만족', value: 12}, {name: '보통', value: 29}, {name: '조금 만족', value: 14}, {name: '만족', value: 14}]}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value">
+                    {[5, 12, 29, 14, 14].map((val, index) => (
+                      <Cell key={index} fill={index < 2 ? '#dc2626' : index === 2 ? '#525252' : '#2563eb'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
       </div>
     </WebSlide>,
-    <WebSlide className="items-center justify-center text-center">
-      <h2 className="text-8xl font-black tracking-tighter mb-8">감사합니다.</h2>
-      <p className="text-2xl text-neutral-500 mb-12">발표를 마칩니다.</p>
-      <button 
-        onClick={() => window.print()}
-        className="absolute bottom-12 right-12 px-8 py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2"
-      >
-        출력하기
-      </button>
+
+    // Slide 16: 지상조업 안전사고 예방 아이디어
+    <WebSlide>
+      <SectionHeader 
+        label="16. Safety Ideas" 
+        title="지상조업 안전사고 예방 아이디어" 
+      />
+      <div className="flex items-center justify-center h-[calc(100%-180px)] mt-16">
+        <div className="w-full max-w-[100rem] grid grid-cols-1 md:grid-cols-3 gap-12">
+          {[
+            { title: "차량·장비", icon: "🚗", color: "bg-blue-600", items: ["터그카 후진 시 후진등·경광등 설치 의무화", "항공기 접현 경비 유도수 배치 및 서행 운행", "화물터미널 터그카·지게차 단속 강화, 인도·항공기 주변 달리 적재 금지"] },
+            { title: "안전 인프라", icon: "🛡️", color: "bg-amber-600", items: ["브릿지 계단 논슬립 강화", "반사경·블라드콘·반사띠 설치", "장비정치장 확대 및 구역 지정", "원격주기장 경광등·차벨 적용", "야간 조도 향상", "장비 무어링포인트 설치"] },
+            { title: "제도", icon: "⚙️", color: "bg-green-600", items: ["낙뢰 시 작업중단 권한 명확화", "운전 중 휴대폰 사용 전면 금지 및 처벌"] }
+          ].map((section, idx) => (
+            <div key={idx} className="bg-white rounded-[2rem] shadow-2xl border border-neutral-100 p-10 flex flex-col">
+              <div className="flex items-center gap-6 mb-10">
+                <div className={cn("w-24 h-24 rounded-3xl flex items-center justify-center text-5xl", section.color)}>
+                  {section.icon}
+                </div>
+                <h3 className="text-4xl font-black text-neutral-900">{section.title}</h3>
+              </div>
+              <ul className="space-y-6 text-3xl text-neutral-800 leading-relaxed flex-1">
+                {section.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-4">
+                    <span className={cn("mt-2.5 w-3 h-3 rounded-full shrink-0", section.color)} />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </WebSlide>,
+
+    // Slide 17: 근무환경 개선 아이디어
+    <WebSlide>
+      <SectionHeader 
+        label="17. Work Environment" 
+        title="근무환경 개선 아이디어" 
+      />
+      <div className="h-13" />
+      <div className="flex items-center justify-center h-[calc(100%-180px)] mt-10">
+        <div className="w-full max-w-[105rem] grid grid-cols-1 md:grid-cols-2 gap-12">
+          {[
+            { title: "휴게시설", icon: "🛋️", color: "bg-green-600", items: ["야외 근무자 폭염·강추위 시 휴게공간 확대", "대기실·휴게실 정결 및 냉난방 개선"] },
+            { title: "장비지원", icon: "🛠️", color: "bg-purple-600", items: ["먼지 제거 장비 도입 및 주기적 청소", "국제선 BSA 출발 벨트 수 확대 및 공간 확장"] },
+            { title: "위생", icon: "🧼", color: "bg-teal-600", items: ["화장실 환경 개선 및 상주직원 확장실 주기적인 청소", "작업자 개인우의 건조 공간 및 탈의실 청소", "램프 사이드 스팟별 휴게 컨테이너 관리 구역 지정"] },
+            { title: "운영체계 등 기타", icon: "📋", color: "bg-rose-600", items: ["상주기관 공용 회의·교육·인터뷰실 운영", "대기실·교육장 물리 또는 확장(제주공항)", "QR 건의 후 조치 완료 시 결과 회신"] }
+          ].map((section, idx) => (
+            <div key={idx} className="bg-white rounded-[2rem] shadow-2xl border border-neutral-100 p-10 flex flex-col">
+              <div className="flex items-center gap-6 mb-10">
+                <div className={cn("w-24 h-24 rounded-3xl flex items-center justify-center text-5xl", section.color)}>
+                  {section.icon}
+                </div>
+                <h3 className="text-4xl font-black text-neutral-900">{section.title}</h3>
+              </div>
+              <ul className="space-y-6 text-3xl text-neutral-800 leading-relaxed flex-1">
+                {section.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-4">
+                    <span className={cn("mt-2.5 w-3 h-3 rounded-full shrink-0", section.color)} />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </WebSlide>,
+
+
+    // Slide 19: Platform
+    <WebSlide>
+      <div className="h-full flex flex-col">
+        <SectionHeader 
+          label="19. PLATFORM" 
+          title="'공항 지상안전사고 예방' 웹사이트" 
+        />
+        <div className="flex-1 mt-8 rounded-[2.5rem] overflow-hidden shadow-2xl border border-neutral-200 bg-white flex items-center justify-center relative">
+          <img 
+            src={`${BASE_URL}images/batang.jpg`} 
+            alt="공항 지상안전사고 예방 웹사이트" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute bottom-12 left-12 bg-white/95 backdrop-blur-md p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-white/50 flex items-center gap-10">
+            <div className="flex flex-col">
+              <span className="text-4xl font-black text-neutral-900 mb-3">지금 바로 접속하세요</span>
+              <span className="text-2xl font-bold text-blue-600 tracking-tight">bandinuguri.github.io/safe/</span>
+            </div>
+            <motion.div 
+              whileHover={{ scale: 2, zIndex: 50 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="w-36 h-36 bg-white p-3 rounded-3xl shadow-inner border border-neutral-100 cursor-pointer relative"
+            >
+               <img 
+                 src={`${BASE_URL}images/qr-code.jpg`} 
+                 alt="QR Code" 
+                 className="w-full h-full object-contain" 
+                 referrerPolicy="no-referrer"
+               />
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </WebSlide>,
+
+
+    
+    // Slide 20: Thank You
+    <WebSlide>
+      <div className="h-full flex flex-col justify-center items-center text-center relative overflow-hidden">
+        {/* Background Gradient Effects */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-900/10 blur-[100px] rounded-full" />
+        
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="relative z-10"
+        >
+          {/* Main Thank You Message */}
+          <div className="mb-12">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="inline-block"
+            >
+              <AlertTriangle size={80} className="mx-auto mb-8 text-blue-600" />
+            </motion.div>
+            
+            <h2 className="text-[10vw] font-black tracking-tighter leading-none mb-6">
+              감사합니다
+            </h2>
+            
+            <div className="w-32 h-1.5 bg-blue-600 mx-auto mb-8 rounded-full" />
+            
+            <p className="text-3xl text-neutral-600 font-medium">
+              지상조업 안전사고예방 간담회
+            </p>
+          </div>
+
+          {/* Safety Message */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8, duration: 0.8 }}
+            className="bg-blue-50/50 backdrop-blur-sm px-12 py-6 rounded-3xl border border-blue-100 inline-block"
+          >
+            <p className="text-2xl font-bold text-blue-900 italic">
+              "하늘 위 안전은 지상에서부터 시작합니다"
+            </p>
+          </motion.div>
+        </motion.div>
+
+        {/* Bottom Action Buttons */}
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-4">
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+            onClick={() => setCurrentSlide(0)}
+            className="group flex items-center gap-3 px-6 py-3 bg-white border-2 border-neutral-200 rounded-xl hover:border-blue-600 hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl"
+          >
+            <span className="text-lg font-bold text-neutral-700 group-hover:text-blue-600">처음으로</span>
+            <ArrowRight className="text-blue-600 group-hover:translate-x-1 transition-transform" />
+          </motion.button>
+          
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4 }}
+            onClick={generatePrintWindow}
+            className="group flex items-center gap-3 px-6 py-3 bg-blue-600 text-white border-2 border-blue-600 rounded-xl hover:bg-blue-700 hover:border-blue-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            <span className="text-lg font-bold">PDF 저장</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </motion.button>
+
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.6 }}
+            onClick={downloadStandaloneHTML}
+            className="group flex items-center gap-3 px-6 py-3 bg-green-600 text-white border-2 border-green-600 rounded-xl hover:bg-green-700 hover:border-green-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            <span className="text-lg font-bold">HTML 다운</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </motion.button>
+        </div>
+      </div>
     </WebSlide>
   ];
+
+  // Debug: 슬라이드 개수 확인
+  console.log('Total slides:', slides.length);
+  React.useEffect(() => {
+    console.log('Slides array initialized with', slides.length, 'slides');
+  }, []);
+
+  const totalSlides = slides.length;
+
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % totalSlides);
+  }, [totalSlides]);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
+  }, [totalSlides]);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+      if (e.key === 'f') toggleFullscreen();
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      prevSlide();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('contextmenu', handleContextMenu);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [nextSlide, prevSlide]);
 
   return (
     <div 
@@ -1129,6 +1532,7 @@ export default function App() {
       className="fixed inset-0 bg-white overflow-hidden select-none cursor-default"
       onClick={nextSlide}
     >
+      {/* 화면 표시용 슬라이드 */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSlide}
@@ -1136,15 +1540,24 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full w-full"
+          className="h-full w-full print:hidden"
         >
           {slides[currentSlide]}
         </motion.div>
       </AnimatePresence>
 
+      {/* 프린트용 모든 슬라이드 (화면에서는 숨김) */}
+      <div className="hidden print:block slide-container">
+        {slides.map((slide, idx) => (
+          <div key={idx} className="web-slide">
+            {slide}
+          </div>
+        ))}
+      </div>
+
       {/* Navigation Controls */}
       <div 
-        className="absolute bottom-12 right-12 flex items-center gap-6 z-50"
+        className="absolute bottom-12 right-12 flex items-center gap-6 z-50 no-print"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-4">
